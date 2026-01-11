@@ -18,7 +18,7 @@ export default function ConfirmParking({ vehicle, onBack }) {
     ];
 
     const parkingSpot = {
-        id: "f13c6d9e-c3ff-4b44-980c-9b747bb75e22",
+        id: "2944e480-5c4c-4068-a4e6-946183f5dc92",
         name: "Inorbit Mall",
         address: "Malad West, Mumbai",
     };

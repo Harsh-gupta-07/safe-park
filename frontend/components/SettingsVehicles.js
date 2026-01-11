@@ -73,8 +73,8 @@ export default function SettingsVehicles({ setActiveView, onEditVehicle }) {
 
     if (loading) {
         return (
-            <div className="px-6 mt-6 flex justify-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+            <div className="px-6 mt-6 flex justify-center items-center">
+                <span className="loading loading-spinner loading-lg"></span>
             </div>
         );
     }

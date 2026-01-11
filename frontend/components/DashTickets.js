@@ -146,9 +146,9 @@ export default function DashTickets({ setActiveView }) {
                 </div>
 
                 <div className={`backdrop-blur-sm mx-auto w-max px-6 py-2 rounded-full flex items-center gap-2 text-white font-medium text-sm shadow-lg mb-6 ${ticketData.status === 'PARKING' ? 'bg-emerald-500/90 shadow-emerald-900/10' :
-                        ticketData.status === 'RETRIEVE' ? 'bg-amber-500/90 shadow-amber-900/10' :
-                            ticketData.status === 'RETRIEVED' ? 'bg-slate-500/90 shadow-slate-900/10' :
-                                'bg-indigo-500/90 shadow-indigo-900/10'
+                    ticketData.status === 'RETRIEVE' ? 'bg-amber-500/90 shadow-amber-900/10' :
+                        ticketData.status === 'RETRIEVED' ? 'bg-slate-500/90 shadow-slate-900/10' :
+                            'bg-indigo-500/90 shadow-indigo-900/10'
                     }`}>
                     <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
                     {ticketData.status === 'PARKING' ? 'Active Parking Session' :
@@ -236,7 +236,7 @@ export default function DashTickets({ setActiveView }) {
                     <button
                         onClick={handleRetrieveCar}
                         disabled={retrieving}
-                        className="w-full bg-indigo-600 text-white font-bold py-4 rounded-2xl shadow-lg shadow-indigo-200 flex items-center justify-center gap-2 active:scale-[0.98] transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full bg-indigo-600 text-white font-bold py-4 rounded-2xl shadow-lg shadow-indigo-200 flex items-center justify-center gap-2 active:scale-[0.98] transition-transform disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                     >
                         {retrieving ? (
                             <>
@@ -251,12 +251,12 @@ export default function DashTickets({ setActiveView }) {
                         )}
                     </button>
 
-                    <button className="w-full bg-white text-slate-700 font-bold py-4 rounded-2xl border border-slate-200 flex items-center justify-center gap-2 active:scale-[0.98] transition-transform">
+                    <button className="w-full bg-white text-slate-700 font-bold py-4 rounded-2xl border border-slate-200 flex items-center justify-center gap-2 active:scale-[0.98] transition-transform cursor-pointer">
                         <Download size={20} />
                         Download Ticket
                     </button>
 
-                    <button className="w-full bg-white text-slate-700 font-bold py-4 rounded-2xl border border-slate-200 flex items-center justify-center gap-2 active:scale-[0.98] transition-transform">
+                    <button className="w-full bg-white text-slate-700 font-bold py-4 rounded-2xl border border-slate-200 flex items-center justify-center gap-2 active:scale-[0.98] transition-transform cursor-pointer">
                         <Share2 size={20} />
                         Share Ticket
                     </button>

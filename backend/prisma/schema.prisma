@@ -1,0 +1,158 @@
+generator client {
+    provider = "prisma-client-js"
+}
+
+datasource db {
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
+}
+
+enum Role {
+    USER
+    DRIVER
+    MANAGER
+    SUPERADMIN
+}
+
+enum ParkingStatus {
+    PARKING
+    PARKED
+    RETRIEVE
+    RETRIEVED
+}
+
+enum PaymentStatus {
+    PENDING
+    COMPLETED
+    FAILED
+}
+
+enum PaymentMethod {
+    CASH
+    NET_BANKING
+    UPI
+    CARD
+}
+
+model User {
+    id         String   @id @default(uuid())
+    email      String   @unique
+    password   String
+    name       String
+    phone      String?
+    role       Role     @default(USER)
+    deleted    Boolean  @default(false)
+    created_at DateTime @default(now())
+    updated_at DateTime @updatedAt
+
+    cars        Car[]
+    manager     Manager?
+    driver      Driver?
+    parked_cars ParkedCar[]
+    payments    Payment[]
+
+    @@map("users")
+}
+
+model ParkingSpot {
+    id         String   @id @default(uuid())
+    name       String
+    location   String?
+    deleted    Boolean  @default(false)
+    capacity   Int      @default(100)
+    created_at DateTime @default(now())
+    updated_at DateTime @updatedAt
+
+    managers    Manager[]
+    drivers     Driver[]
+    parked_cars ParkedCar[]
+
+    @@map("parking_spots")
+}
+
+model Car {
+    id            String   @id @default(uuid())
+    brand         String
+    model         String
+    license_plate String   @unique
+    user_id       String
+    deleted       Boolean  @default(false)
+    created_at    DateTime @default(now())
+    updated_at    DateTime @updatedAt
+
+    user        User        @relation(fields: [user_id], references: [id])
+    parked_cars ParkedCar[]
+
+    @@map("cars")
+}
+
+model Manager {
+    id              String   @id @default(uuid())
+    user_id         String   @unique
+    parking_spot_id String
+    approved        Boolean  @default(false)
+    deleted         Boolean  @default(false)
+    created_at      DateTime @default(now())
+    updated_at      DateTime @updatedAt
+
+    user         User        @relation(fields: [user_id], references: [id])
+    parking_spot ParkingSpot @relation(fields: [parking_spot_id], references: [id])
+
+    @@map("managers")
+}
+
+model Driver {
+    id              String   @id @default(uuid())
+    user_id         String   @unique
+    parking_spot_id String
+    approved        Boolean  @default(false)
+    deleted         Boolean  @default(false)
+    created_at      DateTime @default(now())
+    updated_at      DateTime @updatedAt
+
+    user         User        @relation(fields: [user_id], references: [id])
+    parking_spot ParkingSpot @relation(fields: [parking_spot_id], references: [id])
+    parked_cars  ParkedCar[]
+
+    @@map("drivers")
+}
+
+model ParkedCar {
+    id              String        @id @default(uuid())
+    car_id          String
+    user_id         String
+    parking_spot_id String
+    driver_id       String?
+    status          ParkingStatus @default(PARKING)
+    parked_pos      String        @db.VarChar(50)
+    parked_at       DateTime      @default(now())
+    retrieved_at    DateTime?
+    deleted         Boolean       @default(false)
+    created_at      DateTime      @default(now())
+    updated_at      DateTime      @updatedAt
+
+    car          Car         @relation(fields: [car_id], references: [id])
+    user         User        @relation(fields: [user_id], references: [id])
+    parking_spot ParkingSpot @relation(fields: [parking_spot_id], references: [id])
+    driver       Driver?     @relation(fields: [driver_id], references: [id])
+    payments     Payment[]
+
+    @@map("parked_cars")
+}
+
+model Payment {
+    id            String        @id @default(uuid())
+    user_id       String
+    parked_car_id String
+    amount        Decimal       @db.Decimal
+    payment_type  PaymentMethod
+    status        PaymentStatus
+    deleted       Boolean       @default(false)
+    created_at    DateTime      @default(now())
+    updated_at    DateTime      @updatedAt
+
+    user       User      @relation(fields: [user_id], references: [id])
+    parked_car ParkedCar @relation(fields: [parked_car_id], references: [id])
+
+    @@map("payments")
+}

@@ -5,10 +5,10 @@ import { usePathname } from "next/navigation";
 export default function LoadingScreen() {
     const pathName = usePathname();
     return (
-        <div className="fixed inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center z-[100]">
+        <div className="fixed inset-0 bg-linear-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center z-100">
             <div className="flex flex-col items-center gap-6">
                 <div className="relative">
-                    <div className="w-20 h-20 rounded-full bg-gradient-to-r from-emerald-400 to-cyan-400 animate-pulse flex items-center justify-center">
+                    <div className="w-20 h-20 rounded-full bg-linear-to-r from-emerald-400 to-cyan-400 animate-pulse flex items-center justify-center">
                         <svg
                             className="w-10 h-10 text-slate-900"
                             fill="currentColor"

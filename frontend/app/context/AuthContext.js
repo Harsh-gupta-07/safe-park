@@ -1,10 +1,12 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect } from "react";
+import { usePathname } from "next/navigation";
 
 const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
+    const pathname = usePathname();
     const [isLoading, setIsLoading] = useState(true);
     const [user, setUser] = useState(null);
     const [error, setError] = useState(null);
@@ -12,11 +14,35 @@ export function AuthProvider({ children }) {
     useEffect(() => {
         const autoLogin = async () => {
             try {
-                const email = process.env.NEXT_PUBLIC_EMAIL;
-                const password = process.env.NEXT_PUBLIC_PASSWORD;
+                let email = process.env.NEXT_PUBLIC_EMAIL;
+                let password = process.env.NEXT_PUBLIC_PASSWORD;
+
+                if (pathname.startsWith("/driver")) {
+                    email = process.env.NEXT_PUBLIC_DRIVER_EMAIL;
+                    password = process.env.NEXT_PUBLIC_DRIVER_PASSWORD;
+                } else if (pathname.startsWith("/manager")) {
+                    email = process.env.NEXT_PUBLIC_MANAGER_EMAIL;
+                    password = process.env.NEXT_PUBLIC_MANAGER_PASSWORD;
+                } else if (pathname.startsWith("/super-admin")) {
+                    email = process.env.NEXT_PUBLIC_ADMIN_EMAIL;
+                    password = process.env.NEXT_PUBLIC_ADMIN_PASSWORD;
+                }
+
+                if (user && user.email === email) {
+                    setIsLoading(false);
+                    return;
+                }
+
+                if (user && user.email !== email) {
+                    sessionStorage.removeItem("authToken");
+                    setUser(null);
+                }
+
+                setIsLoading(true);
 
                 if (!email || !password) {
-                    console.warn("Auto-login credentials not found in .env");
+                    console.warn(`Auto-login credentials not found for path: ${pathname}`);
+                    setError("Auto-login credentials not found");
                     setIsLoading(false);
                     return;
                 }
@@ -47,11 +73,10 @@ export function AuthProvider({ children }) {
         };
 
         autoLogin();
-    }, []);
+    }, [pathname]);
 
     const logout = () => {
         sessionStorage.removeItem("authToken");
-        sessionStorage.removeItem("user");
         setUser(null);
     };
 
