@@ -43,6 +43,34 @@ router.get("/profile", authenticateToken, async (req, res) => {
     }
 });
 
+router.get("/parking-spots", authenticateToken, async (req, res) => {
+    try {
+        const parkingSpots = await prisma.parkingSpot.findMany({
+            where: {
+                deleted: false
+            },
+            select: {
+                id: true,
+                name: true,
+                location: true,
+                capacity: true
+            }
+        });
+
+        res.status(200).json({
+            success: true,
+            message: "Parking spots fetched successfully",
+            data: parkingSpots
+        });
+    } catch (error) {
+        console.error("Error fetching parking spots:", error);
+        res.status(500).json({
+            success: false,
+            message: "Internal server error"
+        });
+    }
+});
+
 router.get("/recent-parked-cars", authenticateToken, async (req, res) => {
     try {
         const userId = req.user.userId;

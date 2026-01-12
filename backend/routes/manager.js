@@ -214,8 +214,51 @@ router.get("/parked-cars", authenticateToken, isManager, async (req, res) => {
             }
         });
 
-        const total = await prisma.parkedCar.count({ where });
-        const totalPages = Math.ceil(total / pageLimit);
+        const countsWhere = {
+            parking_spot_id: parkingSpotId,
+            deleted: false,
+            parked_at: {
+                gte: today,
+                lt: tomorrow
+            }
+        };
+
+        if (keyword) {
+            countsWhere.OR = [
+                {
+                    car: {
+                        license_plate: {
+                            contains: keyword,
+                            mode: 'insensitive'
+                        }
+                    }
+                },
+                {
+                    user: {
+                        name: {
+                            contains: keyword,
+                            mode: 'insensitive'
+                        }
+                    }
+                }
+            ];
+        }
+
+        const [
+            totalItems,
+            parkingCount,
+            parkedCount,
+            retrieveCount,
+            retrievedCount
+        ] = await Promise.all([
+            prisma.parkedCar.count({ where: countsWhere }),
+            prisma.parkedCar.count({ where: { ...countsWhere, status: 'PARKING' } }),
+            prisma.parkedCar.count({ where: { ...countsWhere, status: 'PARKED' } }),
+            prisma.parkedCar.count({ where: { ...countsWhere, status: 'RETRIEVE' } }),
+            prisma.parkedCar.count({ where: { ...countsWhere, status: 'RETRIEVED' } })
+        ]);
+
+        const totalPages = Math.ceil(totalItems / pageLimit);
 
         const parkedCars = parkedCarsRaw.map(pc => ({
             ...pc,
@@ -233,10 +276,17 @@ router.get("/parked-cars", authenticateToken, isManager, async (req, res) => {
             message: "Parked cars fetched successfully",
             data: {
                 cars: parkedCars,
+                counts: {
+                    all: totalItems,
+                    parking: parkingCount,
+                    parked: parkedCount,
+                    retrieve: retrieveCount,
+                    retrieved: retrievedCount
+                },
                 pagination: {
                     current_page: parseInt(page),
                     total_pages: totalPages,
-                    total_items: total,
+                    total_items: totalItems,
                     items_per_page: pageLimit
                 }
             }
@@ -422,6 +472,80 @@ router.put("/assign-driver", authenticateToken, isManager, async (req, res) => {
         });
     } catch (error) {
         console.error("Error assigning driver:", error);
+        res.status(500).json({
+            success: false,
+            message: "Internal server error"
+        });
+    }
+});
+
+router.post("/add-driver", authenticateToken, isManager, async (req, res) => {
+    try {
+        const parkingSpotId = req.manager.parking_spot_id;
+        const { email } = req.body;
+
+        if (!email) {
+            return res.status(400).json({
+                success: false,
+                message: "Email is required"
+            });
+        }
+
+        const user = await prisma.user.findUnique({
+            where: {
+                email: email,
+                deleted: false
+            }
+        });
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: "User with this email not found"
+            });
+        }
+
+        const existingDriver = await prisma.driver.findFirst({
+            where: {
+                user_id: user.id,
+                deleted: false
+            }
+        });
+
+        if (existingDriver) {
+            return res.status(400).json({
+                success: false,
+                message: "User is already a driver"
+            });
+        }
+
+        const newDriver = await prisma.driver.create({
+            data: {
+                user_id: user.id,
+                parking_spot_id: parkingSpotId,
+                approved: false
+            },
+            select: {
+                id: true,
+                user: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                        phone: true
+                    }
+                }
+            }
+        });
+
+        res.status(201).json({
+            success: true,
+            message: "Driver added successfully",
+            data: newDriver
+        });
+
+    } catch (error) {
+        console.error("Error adding driver:", error);
         res.status(500).json({
             success: false,
             message: "Internal server error"

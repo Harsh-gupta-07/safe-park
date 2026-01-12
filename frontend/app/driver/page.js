@@ -15,8 +15,14 @@ export default function page() {
     const [error, setError] = useState(authError);
 
     useEffect(() => {
-        fetchDriverData();
-    }, []);
+        if (!isLoading && user) {
+            const timeoutId = setTimeout(() => {
+                fetchDriverData();
+            }, 500); 
+
+            return () => clearTimeout(timeoutId);
+        }
+    }, [isLoading, user]);
 
     const fetchDriverData = async () => {
         try {
@@ -39,7 +45,9 @@ export default function page() {
             });
 
             if (!unassignedResponse.ok || !parkingResponse.ok) {
-                throw new Error("Failed to fetch driver data");
+                setError("Failed to fetch driver data");
+                console.error("Failed to fetch driver data");
+                return;
             }
 
             const unassignedData = await unassignedResponse.json();

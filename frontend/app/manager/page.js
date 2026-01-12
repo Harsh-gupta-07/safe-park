@@ -1,17 +1,25 @@
 "use client";
 
-import { Search, Phone, Car, Clock, MapPin, User, RefreshCw, ChevronLeft, IndianRupee, CheckCircle, UserPlus } from "lucide-react";
+import { Search, Phone, Car, Clock, MapPin, User, RefreshCw, ChevronLeft, IndianRupee, CheckCircle, UserPlus, AlertCircle, X } from "lucide-react";
 import { useState, useEffect } from "react";
+import { useAuth } from "../context/AuthContext";
+import LoadingScreen from "../../components/LoadingScreen";
+import ErrorScreen from "../../components/ErrorScreen";
 
 const API_BASE_URL = `${process.env.NEXT_PUBLIC_API_URL}/api/v1`;
 
 export default function page() {
+    const { isLoading, error: authError } = useAuth();
     const [activeTab, setActiveTab] = useState("all");
-    const [selectedVehicle, setSelectedVehicle] = useState(null);
     const [assigningDriver, setAssigningDriver] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
     const [loading, setLoading] = useState(true);
     const [loadingCars, setLoadingCars] = useState(false);
+    const [error, setError] = useState(null);
+    const [modalError, setModalError] = useState(null);
+    const [isAddDriverOpen, setIsAddDriverOpen] = useState(false);
+    const [addDriverEmail, setAddDriverEmail] = useState("");
+    const [addingDriver, setAddingDriver] = useState(false);
 
     const [stats, setStats] = useState({
         activeCars: 0,
@@ -19,6 +27,7 @@ export default function page() {
         totalToday: 0,
         revenue: 0,
     });
+
     const [parkingSpot, setParkingSpot] = useState(null);
     const [vehicles, setVehicles] = useState([]);
     const [drivers, setDrivers] = useState([]);
@@ -27,8 +36,17 @@ export default function page() {
     const [totalPages, setTotalPages] = useState(1);
     const [totalItems, setTotalItems] = useState(0);
 
+    const [statusCounts, setStatusCounts] = useState({
+        all: 0,
+        parking: 0,
+        parked: 0,
+        retrieve: 0,
+        retrieved: 0
+    });
+
     const fetchDailyStats = async () => {
         try {
+            setError(null);
             const token = sessionStorage.getItem('authToken');
             const response = await fetch(`${API_BASE_URL}/manager/daily-stats`, {
                 headers: {
@@ -51,12 +69,14 @@ export default function page() {
             }
         } catch (error) {
             console.error('Error fetching daily stats:', error);
+            setError(error.message);
         }
     };
 
     const fetchParkedCars = async (page = 1, status = '', keyword = '') => {
         try {
             setLoadingCars(true);
+            setError(null);
             const token = sessionStorage.getItem('authToken');
 
             const params = new URLSearchParams({
@@ -78,17 +98,27 @@ export default function page() {
                 },
             });
 
-            if (!response.ok) throw new Error('Failed to fetch parked cars');
+            if (!response.ok) {
+                setError('Failed to fetch parked cars');
+                return;
+            }
 
             const result = await response.json();
             if (result.success) {
                 setVehicles(result.data.cars);
+                if (result.data.counts) {
+                    console.log(result.data.counts);
+                    setStatusCounts(result.data.counts);
+                }
                 setCurrentPage(result.data.pagination.current_page);
                 setTotalPages(result.data.pagination.total_pages);
                 setTotalItems(result.data.pagination.total_items);
+            } else {
+                setError(result.message);
             }
         } catch (error) {
             console.error('Error fetching parked cars:', error);
+            setError(error.message);
         } finally {
             setLoadingCars(false);
         }
@@ -96,6 +126,7 @@ export default function page() {
 
     const fetchDrivers = async () => {
         try {
+            setError(null);
             const token = sessionStorage.getItem('authToken');
             const response = await fetch(`${API_BASE_URL}/manager/drivers`, {
                 headers: {
@@ -112,6 +143,7 @@ export default function page() {
             }
         } catch (error) {
             console.error('Error fetching drivers:', error);
+            setError(error.message);
         }
     };
 
@@ -125,21 +157,20 @@ export default function page() {
             await fetchParkedCars(1, activeTab, searchQuery);
             setLoading(false);
         };
-        loadData();
+        const timer = setTimeout(() => {
+            loadData();
+        }, 500);
+        return () => clearTimeout(timer);
     }, []);
 
     useEffect(() => {
-        if (!loading) {
-            fetchParkedCars(1, activeTab, searchQuery);
-        }
+        const timeout = setTimeout(() => {
+            if (!loading) {
+                fetchParkedCars(1, activeTab, searchQuery);
+            }
+        }, 500);
+        return () => clearTimeout(timeout);
     }, [activeTab, searchQuery]);
-
-    const tabCounts = {
-        all: totalItems,
-        parked: vehicles.filter(v => v.status === 'PARKING').length,
-        retrieve: vehicles.filter(v => v.status === 'RETRIEVE').length,
-        retrieved: vehicles.filter(v => v.status === 'RETRIEVED').length,
-    };
 
     const formatDate = (dateString) => {
         const date = new Date(dateString);
@@ -161,9 +192,10 @@ export default function page() {
         return `${hours}h ${minutes}m`;
     };
 
-    const assignDriver = async (driverId) => {
+    const assignDriver = async (parkedCarId, driverId) => {
         try {
             setAssigningDriver(true);
+            setError(null);
             const token = sessionStorage.getItem('authToken');
 
             const response = await fetch(`${API_BASE_URL}/manager/assign-driver`, {
@@ -173,7 +205,7 @@ export default function page() {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    parked_car_id: selectedVehicle.id,
+                    parked_car_id: parkedCarId,
                     driver_id: driverId || null,
                 }),
             });
@@ -182,19 +214,59 @@ export default function page() {
 
             if (result.success) {
                 await fetchParkedCars(currentPage, activeTab, searchQuery);
-                setShowDriverModal(false);
-                setSelectedVehicle(null);
-                alert('Driver assigned successfully!');
             } else {
-                alert(result.message || 'Failed to assign driver');
+                setError(result.message || 'Failed to assign driver');
             }
         } catch (error) {
             console.error('Error assigning driver:', error);
-            alert('Failed to assign driver. Please try again.');
+            setError('Failed to assign driver. Please try again.');
         } finally {
             setAssigningDriver(false);
         }
     };
+
+    const handleAddDriver = async (e) => {
+        e.preventDefault();
+        try {
+            setAddingDriver(true);
+            setModalError(null);
+            const token = sessionStorage.getItem('authToken');
+
+            const response = await fetch(`${API_BASE_URL}/manager/add-driver`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    email: addDriverEmail,
+                }),
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                setAddDriverEmail("");
+                setIsAddDriverOpen(false);
+                await fetchDrivers();
+            } else {
+                setModalError(result.message || 'Failed to add driver');
+            }
+        } catch (error) {
+            console.error('Error adding driver:', error);
+            setModalError('Failed to add driver. Please try again.');
+        } finally {
+            setAddingDriver(false);
+        }
+    };
+
+    if (isLoading) {
+        return <LoadingScreen />;
+    }
+
+    if (authError) {
+        return <ErrorScreen error={authError} />;
+    }
 
     return (
         <div className="pb-32 bg-slate-50 min-h-screen">
@@ -215,19 +287,46 @@ export default function page() {
                                 </button>
                                 <h1 className="text-slate-900 text-base font-semibold">Manager Dashboard</h1>
                             </div>
-                            <button
-                                onClick={async () => {
-                                    await fetchDailyStats();
-                                    await fetchParkedCars(currentPage, activeTab, searchQuery);
-                                }}
-                                className="w-8 h-8 flex items-center justify-center text-slate-600 hover:text-slate-900"
-                                disabled={loading || loadingCars}
-                            >
-                                <RefreshCw size={20} className={loadingCars ? 'animate-spin' : ''} />
-                            </button>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={async () => {
+                                        await fetchDailyStats();
+                                        await fetchParkedCars(currentPage, activeTab, searchQuery);
+                                    }}
+                                    className="w-8 h-8 flex items-center justify-center text-slate-600 hover:text-slate-900"
+                                    disabled={loading || loadingCars}
+                                >
+                                    <RefreshCw size={20} className={loadingCars ? 'animate-spin' : ''} />
+                                </button>
+                                <button
+                                    onClick={() => setIsAddDriverOpen(true)}
+                                    className="w-28 h-8 cursor-pointer flex items-center justify-center text-slate-600 hover:text-slate-900 ml-2"
+                                >
+                                    <UserPlus size={22} className="mr-2" /> Add Driver
+                                </button>
+                            </div>
+
                         </div>
                         <p className="text-slate-500 text-xs mt-1 ml-10">Manage valet assignments and parking operations</p>
                     </div>
+
+                    {error && (
+                        <div className="px-5 mt-4">
+                            <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3">
+                                <AlertCircle className="text-red-500 shrink-0 mt-0.5" size={20} />
+                                <div className="flex-1">
+                                    <h3 className="text-sm font-medium text-red-800">Error</h3>
+                                    <p className="text-sm text-red-600 mt-1">{error}</p>
+                                </div>
+                                <button
+                                    onClick={() => setError(null)}
+                                    className="text-red-400 hover:text-red-600"
+                                >
+                                    <X size={20} />
+                                </button>
+                            </div>
+                        </div>
+                    )}
 
                     <div className="grid grid-cols-2 gap-3 px-5 mt-5">
                         <div className="bg-white p-4 rounded-xl border border-slate-200">
@@ -262,16 +361,16 @@ export default function page() {
                     </div>
 
                     <div className="flex px-5 mt-4 gap-2 overflow-x-auto scrollbar-hide">
-                        {['all', 'parked', 'retrieve', 'retrieved'].map(tab => (
+                        {['all', 'parking', 'parked', 'retrieve', 'retrieved'].map(tab => (
                             <button
                                 key={tab}
-                                onClick={() => setActiveTab(tab)}
+                                onClick={() => { setActiveTab(tab) }}
                                 className={`px-4 py-2 rounded-full text-sm font-medium capitalize whitespace-nowrap transition-colors ${activeTab === tab
                                     ? 'bg-slate-900 text-white'
                                     : 'bg-white text-slate-600 border border-slate-200'
                                     }`}
                             >
-                                {tab.charAt(0).toUpperCase() + tab.slice(1)} ({tabCounts[tab]})
+                                {tab.charAt(0).toUpperCase() + tab.slice(1)} ({statusCounts[tab]})
                             </button>
                         ))}
                     </div>
@@ -349,13 +448,13 @@ export default function page() {
                                         <div className="mt-4">
                                             <label className="text-xs text-slate-500 mb-1 block">Assign Driver</label>
                                             <select
+
                                                 value={vehicle.driver?.id || ''}
                                                 onChange={(e) => {
-                                                    const driverId = e.target.value ? parseInt(e.target.value) : null;
-                                                    setSelectedVehicle(vehicle);
-                                                    assignDriver(driverId);
+                                                    const driverId = e.target.value
+                                                    assignDriver(vehicle.id, driverId);
                                                 }}
-                                                disabled={assigningDriver}
+                                                disabled={assigningDriver || vehicle.status == 'RETRIEVED'}
                                                 className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white text-slate-900 focus:outline-none focus:border-slate-400 disabled:opacity-50"
                                             >
                                                 <option value="">Unassigned</option>
@@ -417,7 +516,6 @@ export default function page() {
                         )}
                     </div>
 
-                    {/* Pagination Controls */}
                     {!loadingCars && vehicles.length > 0 && totalPages > 1 && (
                         <div className="px-5 mt-6 mb-8">
                             <div className="flex items-center justify-between bg-white p-4 rounded-xl border border-slate-200">
@@ -448,6 +546,63 @@ export default function page() {
                         </div>
                     )}
                 </>
+            )}
+
+            {isAddDriverOpen && (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl w-full max-w-md p-6 relative">
+                        <button
+                            onClick={() => {
+                                setIsAddDriverOpen(false);
+                                setAddDriverEmail("");
+                                setModalError(null);
+                                setError(null);
+                            }}
+                            className="absolute right-4 top-4 text-slate-400 hover:text-slate-600"
+                        >
+                            <X size={20} />
+                        </button>
+
+                        <h2 className="text-xl font-bold text-slate-900 mb-1">Add New Driver</h2>
+                        <p className="text-sm text-slate-500 mb-6">Enter the email address of the user you want to add as a driver.</p>
+                        {modalError && (
+                            <p className="text-sm text-red-500 mb-4">{modalError}</p>
+                        )}
+                        <form onSubmit={handleAddDriver}>
+                            <div className="mb-4">
+                                <label className="block text-sm font-medium text-slate-700 mb-1">
+                                    Email Address
+                                </label>
+                                <input
+                                    type="email"
+                                    required
+                                    value={addDriverEmail}
+                                    onChange={(e) => setAddDriverEmail(e.target.value)}
+                                    placeholder="driver@example.com"
+                                    className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white text-slate-900 focus:outline-none focus:border-slate-400"
+                                />
+                            </div>
+
+                            <button
+                                type="submit"
+                                disabled={addingDriver}
+                                className="w-full bg-slate-900 text-white font-medium py-3 rounded-xl hover:bg-slate-800 disabled:opacity-50 flex items-center justify-center gap-2"
+                            >
+                                {addingDriver ? (
+                                    <>
+                                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                        <span>AddingDriver...</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <UserPlus size={18} />
+                                        <span>Add Driver</span>
+                                    </>
+                                )}
+                            </button>
+                        </form>
+                    </div>
+                </div>
             )}
         </div>
     );

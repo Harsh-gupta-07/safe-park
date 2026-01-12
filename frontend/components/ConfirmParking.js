@@ -1,14 +1,16 @@
 "use client";
 import { ArrowLeft, Car, MapPin, Smartphone, CreditCard, Banknote, CheckCircle2, Loader2 } from "lucide-react";
 import { useAuth } from "../app/context/AuthContext";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 export default function ConfirmParking({ vehicle, onBack }) {
     const { user, getToken } = useAuth();
     const [paymentMethod, setPaymentMethod] = useState("UPI");
     const [isLoading, setIsLoading] = useState(false);
+    const [pageLoading, setPageLoading] = useState(true);
     const [error, setError] = useState(null);
     const [success, setSuccess] = useState(false);
+    const [parkingSpot, setParkingSpot] = useState(null);
 
     const paymentMethods = [
         { id: "UPI", name: "UPI", icon: Smartphone, color: "bg-indigo-100", iconColor: "text-indigo-600" },
@@ -17,11 +19,41 @@ export default function ConfirmParking({ vehicle, onBack }) {
         { id: "CASH", name: "Cash", icon: Banknote, color: "bg-orange-100", iconColor: "text-orange-600" },
     ];
 
-    const parkingSpot = {
-        id: "2944e480-5c4c-4068-a4e6-946183f5dc92",
-        name: "Inorbit Mall",
-        address: "Malad West, Mumbai",
-    };
+    useEffect(() => {
+        const fetchParkingSpots = async () => {
+            try {
+                const token = getToken();
+                const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/user/parking-spots`, {
+                    headers: {
+                        "Authorization": `Bearer ${token}`
+                    }
+                });
+                const data = await response.json();
+                if (data.success && data.data.length > 0) {
+                    const specificSpotId = "2944e480-5c4c-4068-a4e6-946183f5dc92";
+                    const specificSpot = data.data.find(s => s.id === specificSpotId);
+                    const selectedSpot = specificSpot || data.data[Math.floor(Math.random() * data.data.length)];
+
+                    setParkingSpot({
+                        id: selectedSpot.id,
+                        name: selectedSpot.name,
+                        address: selectedSpot.location
+                    });
+                } else {
+                    setError("No parking spots available");
+                }
+            } catch (err) {
+                console.error("Error fetching parking spots:", err);
+                setError("Failed to load parking spots");
+            } finally {
+                setPageLoading(false);
+            }
+        };
+        const timer = setTimeout(() => {
+            fetchParkingSpots();
+        }, 500);
+        return () => clearTimeout(timer);
+    }, []);
 
     const pricing = {
         baseRate: 100,
@@ -63,6 +95,28 @@ export default function ConfirmParking({ vehicle, onBack }) {
             setIsLoading(false);
         }
     };
+
+    if (pageLoading) {
+        return (
+            <div className="flex items-center justify-center min-h-screen bg-slate-50">
+                <Loader2 className="animate-spin text-indigo-600" size={32} />
+            </div>
+        );
+    }
+
+    if (!parkingSpot && !pageLoading) {
+        return (
+            <div className="flex items-center justify-center min-h-screen bg-slate-50 flex-col gap-4">
+                <p className="text-slate-600">No parking spots available right now.</p>
+                <button
+                    onClick={onBack}
+                    className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                >
+                    Go Back
+                </button>
+            </div>
+        );
+    }
 
     return (
         <div className="bg-slate-50 min-h-full pb-32">
@@ -158,7 +212,7 @@ export default function ConfirmParking({ vehicle, onBack }) {
                             <span className="text-slate-800 font-medium">₹{pricing.serviceFee}</span>
                         </div>
                         <div className="flex justify-between">
-                            <span className="text-slate-600">GST (18%)</span>
+                            <span className="text-slate-600">GST (20%)</span>
                             <span className="text-slate-800 font-medium">₹{pricing.gst}</span>
                         </div>
                         <div className="border-t border-slate-100 pt-3 flex justify-between">

@@ -227,7 +227,7 @@ export default function DashTickets({ setActiveView }) {
                         </div>
 
                         <div className="pt-6 border-t border-slate-50 text-center">
-                            <p className="text-slate-300 text-xs font-medium">Powered by Smart Parking</p>
+                            <p className="text-slate-300 text-xs font-medium">Powered by Safe Park</p>
                         </div>
                     </div>
                 </div>

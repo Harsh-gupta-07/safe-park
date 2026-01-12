@@ -52,8 +52,10 @@ function DashHome({ onScanClick }) {
                 setLoading(false);
             }
         };
-
-        fetchRecentParkedCars();
+        const timeoutId = setTimeout(() => {
+            fetchRecentParkedCars();
+        }, 500);
+        return () => clearTimeout(timeoutId);
     }, []);
 
     return (
@@ -118,15 +120,15 @@ function DashHome({ onScanClick }) {
                     ) : (
                         <div className="space-y-3">
                             {activeParking.map((item) => (
-                                <div key={item.id} className={`rounded-2xl p-4 border relative overflow-hidden ${item.status === 'parking' ? 'bg-emerald-50 border-emerald-100' :
-                                        item.status === 'retrieve' ? 'bg-amber-50 border-amber-100' :
-                                            'bg-slate-50 border-slate-100'
+                                <div key={item.id} className={`rounded-2xl p-4 border relative overflow-hidden shadow-sm ${item.status === 'parking' ? 'bg-white border-emerald-100' :
+                                    item.status === 'retrieve' ? 'bg-white border-amber-100' :
+                                        'bg-white border-slate-100'
                                     }`}>
                                     <div className="flex justify-between items-start mb-4">
                                         <div className="flex gap-3">
                                             <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-md ${item.status === 'parking' ? 'bg-emerald-500 shadow-emerald-500/20' :
-                                                    item.status === 'retrieve' ? 'bg-amber-500 shadow-amber-500/20' :
-                                                        'bg-slate-500 shadow-slate-500/20'
+                                                item.status === 'retrieve' ? 'bg-amber-500 shadow-amber-500/20' :
+                                                    'bg-slate-500 shadow-slate-500/20'
                                                 }`}>
                                                 <span className="font-bold text-lg">{item.status === 'parking' ? 'In' : 'Out'}</span>
                                             </div>
@@ -143,8 +145,8 @@ function DashHome({ onScanClick }) {
 
                                     <div className="flex items-center">
                                         <div className={`text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-sm flex items-center gap-1.5 ${item.status === 'parking' ? 'bg-emerald-500' :
-                                                item.status === 'retrieve' ? 'bg-amber-500' :
-                                                    'bg-slate-500'
+                                            item.status === 'retrieve' ? 'bg-amber-500' :
+                                                'bg-slate-500'
                                             }`}>
                                             <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
                                             {item.status === 'parking' ? 'Parking' :
