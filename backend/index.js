@@ -5,7 +5,7 @@ dotenv.config();
 
 const authRoutes = require("./routes/auth");
 const userRoutes = require("./routes/user");
-// const managerRoutes = require("./routes/manager");
+const managerRoutes = require("./routes/manager");
 const driverRoutes = require("./routes/driver");
 // const superadminRoutes = require("./routes/superadmin");
 
@@ -16,7 +16,7 @@ app.use(express.json());
 
 app.use(`/api/${version}/auth`, authRoutes);
 app.use(`/api/${version}/user`, userRoutes);
-// app.use(`/api/${version}/manager`, managerRoutes);
+app.use(`/api/${version}/manager`, managerRoutes);
 app.use(`/api/${version}/driver`, driverRoutes);
 // app.use(`/api/${version}/superadmin`, superadminRoutes);
 
