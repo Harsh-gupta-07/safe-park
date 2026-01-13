@@ -139,9 +139,12 @@ export default function DashboardSuperAdmin() {
     }, []);
 
     useEffect(() => {
-        if (selectedSite && sites.length > 0) {
-            fetchOverview();
-        }
+        const timer = setTimeout(() => {
+            if (selectedSite && sites.length > 0) {
+                fetchOverview();
+            }
+        }, 500)
+        return () => { clearTimeout(timer) }
     }, [selectedSite, sites]);
 
     useEffect(() => {
